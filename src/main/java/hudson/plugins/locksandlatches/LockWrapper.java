@@ -26,11 +26,13 @@ package hudson.plugins.locksandlatches;
 
 import hudson.Extension;
 import hudson.Launcher;
-import hudson.model.*;
+import hudson.model.BuildListener;
+import hudson.model.Descriptor;
+import hudson.model.Resource;
+import hudson.model.ResourceActivity;
+import hudson.model.ResourceList;
+import hudson.model.AbstractBuild;
 import hudson.tasks.BuildWrapper;
-import net.sf.json.JSONObject;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -41,13 +43,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
+
+import net.sf.json.JSONObject;
+
 import org.apache.commons.collections.Closure;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.lang.StringUtils;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
 
 /**
  * Created by IntelliJ IDEA.
@@ -95,6 +101,7 @@ public class LockWrapper extends BuildWrapper implements ResourceActivity {
         List<LockWaitConfig> locks = new ArrayList<LockWaitConfig>(this.locks);
 
         // sort this list of locks so that we _always_ ask for the locks in order
+        //Ordenamiento
         Collections.sort(locks, new Comparator<LockWaitConfig>() {
             public int compare(LockWaitConfig o1, LockWaitConfig o2) {
                 return o1.getName().compareTo(o2.getName());
@@ -102,17 +109,24 @@ public class LockWrapper extends BuildWrapper implements ResourceActivity {
         });
 
         // build the list of "real" locks
-        for (LockWaitConfig lock : locks) {
+        /**for (LockWaitConfig lock : locks) {
             NamedReentrantLock backupLock;
             do {
                 backupLock = DESCRIPTOR.backupLocks.get(lock.getName());
+                //hudson.model.Queue.getInstance().getItems(); --> Acceso cola
+                //Hudson.getInstance().getComputers(); --> Acceso a los jobs en ejecucion
                 if (backupLock == null) {
                     DESCRIPTOR.backupLocks.putIfAbsent(lock.getName(), new NamedReentrantLock(lock.getName()));
                 }
             } while (backupLock == null);
             backups.add(backupLock);
-        }
-
+        }*/
+        
+        //El valor actual del parametro lock para la ejecucion actual
+        //cogemos el job actual en ejecucion y buscamos su variable de entorno lock
+        abstractBuild.getAction(hudson.model.ParametersAction.class).getParameter("lock");
+        backups.add(new NamedReentrantLock(abstractBuild.getAction(hudson.model.ParametersAction.class).getParameter("lock").toString()));
+        
         final StringBuilder locksToGet = new StringBuilder();
         CollectionUtils.forAllDo(backups, new Closure() {
             public void execute(Object input) {
@@ -125,7 +139,16 @@ public class LockWrapper extends BuildWrapper implements ResourceActivity {
         boolean haveAll = false;
         while (!haveAll) {
             haveAll = true;
-            List<NamedReentrantLock> locked = new ArrayList<NamedReentrantLock>();
+            
+            //Comparo la lista de jobs en cola
+            //obtendo sus parametro lock
+            //Comparo esa lista de parametros con el parametro del lock actual
+            
+            
+            
+            
+            
+            /**List<NamedReentrantLock> locked = new ArrayList<NamedReentrantLock>();
 
             DESCRIPTOR.lockingLock.lock();
             try {
@@ -153,7 +176,7 @@ public class LockWrapper extends BuildWrapper implements ResourceActivity {
             if (!haveAll) {
                 buildListener.getLogger().println("[locks-and-latches] Could not get all the locks, sleeping for 1 minute...");
                 TimeUnit.SECONDS.sleep(60);
-            }
+            }*/
         }
 
         buildListener.getLogger().println("[locks-and-latches] Have all the locks, build can start");
